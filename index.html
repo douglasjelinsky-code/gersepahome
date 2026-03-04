@@ -11,12 +11,12 @@
     
     <title>Gersepa Solutions</title>
     
-    <!-- Favicon -->
+    <!-- Favicon e Ícone Apple -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
     
-    <!-- Manifest PWA -->
-    <link rel="manifest" href="manifest.json">
+    <!-- Manifest PWA Embutido (Data URI) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Gersepa Solutions","short_name":"Gersepa","description":"Conectando você aos melhores profissionais de limpeza e segurança","start_url":".","display":"standalone","background_color":"#e3f2fd","theme_color":"#1e3a8a","icons":[{"src":"https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png","sizes":"192x192","type":"image/png","purpose":"any"},{"src":"https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png","sizes":"512x512","type":"image/png","purpose":"any"},{"src":"https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png","sizes":"192x192","type":"image/png","purpose":"maskable"},{"src":"https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]}'>
     
     <style>
         * {
@@ -158,24 +158,6 @@
             box-shadow: 0 8px 25px rgba(30, 58, 138, 0.45);
         }
 
-        .btn-primary::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .btn-primary:active::after {
-            width: 300px;
-            height: 300px;
-        }
-
         .btn-secondary {
             background: white;
             color: #1e3a8a;
@@ -293,7 +275,6 @@
             }
         }
     </style>
-<base target="_blank">
 </head>
 <body>
     <div class="container">
@@ -336,27 +317,25 @@
             </a>
         </div>
 
-        <!-- Footer -->
         <div class="footer">
-            <p>© 2024 Gersepa Solutions - Todos os direitos reservados</p>
-            <p style="margin-top: 8px; font-size: 0.75rem;">Segurança e Limpeza Profissional</p>
+            &copy; 2024 Gersepa Solutions. Todos os direitos reservados.
         </div>
     </div>
 
     <script>
-        // Registrar Service Worker para PWA
+        // Service Worker Embutido (Inline)
+        const swCode = `
+            const CACHE_NAME = 'gersepa-v1';
+            const ASSETS = ['./', 'https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png'];
+            self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS))));
+            self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((k) => Promise.all(k.filter((x) => x !== CACHE_NAME).map((x) => caches.delete(x))))));
+            self.addEventListener('fetch', (e) => e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request))));
+        `;
+
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registrado:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.log('❌ Falha ao registrar SW:', error);
-                    });
-            });
-        } else {
-            console.log('❌ Service Worker não suportado');
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).then(() => console.log('✅ SW Ativo')).catch(e => console.log('❌ Erro SW:', e));
         }
 
         // Lógica de instalação do PWA
@@ -364,34 +343,23 @@
         const installPrompt = document.getElementById('installPrompt');
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ beforeinstallprompt capturado');
             e.preventDefault();
             deferredPrompt = e;
             installPrompt.classList.add('show');
         });
 
         window.addEventListener('appinstalled', () => {
-            console.log('✅ App instalado com sucesso!');
             installPrompt.classList.remove('show');
             deferredPrompt = null;
         });
 
         function installPWA() {
             if (!deferredPrompt) {
-                console.log('❌ Instalação não disponível');
                 alert('A instalação só está disponível em HTTPS e após interagir com a página.');
                 return;
             }
-            
             deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('✅ Usuário aceitou instalar');
-                } else {
-                    console.log('❌ Usuário recusou instalação');
-                }
-                deferredPrompt = null;
-            });
+            deferredPrompt.userChoice.then(() => deferredPrompt = null);
         }
 
         // Efeito ripple nos botões
@@ -413,3 +381,4 @@
     </script>
 </body>
 </html>
+
