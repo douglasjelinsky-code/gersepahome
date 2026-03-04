@@ -11,11 +11,11 @@
     
     <title>Gersepa Solutions</title>
     
-    <!-- Favicon - LOGO GERSEPA -->
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
     
-    <!-- Manifest PWA com ícone da Gersepa -->
+    <!-- Manifest PWA -->
     <link rel="manifest" href="manifest.json">
     
     <style>
@@ -60,8 +60,8 @@
         }
 
         .logo-icon {
-            width: 180px;
-            height: 180px;
+            width: 160px;
+            height: 160px;
             background: transparent;
             border-radius: 0;
             display: flex;
@@ -70,13 +70,11 @@
             margin: 0 auto 25px;
             position: relative;
             overflow: visible;
-            border: none;
-            box-shadow: none;
         }
 
         .logo-icon img {
-            width: 180px;
-            height: 180px;
+            width: 160px;
+            height: 160px;
             object-fit: contain;
             filter: drop-shadow(0 10px 30px rgba(30, 58, 138, 0.4));
             animation: floatBadge 4s ease-in-out infinite;
@@ -278,13 +276,13 @@
             }
 
             .logo-icon {
-                width: 150px;
-                height: 150px;
+                width: 130px;
+                height: 130px;
             }
 
             .logo-icon img {
-                width: 150px;
-                height: 150px;
+                width: 130px;
+                height: 130px;
             }
         }
 
@@ -295,18 +293,19 @@
             }
         }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="container">
         <!-- Prompt de instalação -->
         <div id="installPrompt" class="install-prompt">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                    <img src="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png" alt="Gersepa" style="width: 100%; height: 100%; object-fit: contain;">
+                <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                    <img src="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png" alt="Gersepa" style="width: 40px; height: 40px; object-fit: contain;">
                 </div>
                 <div>
                     <strong style="color: #1e3a8a; font-size: 1rem;">Gersepa Solutions</strong>
-                    <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Instale nosso app</p>
+                    <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Instale nosso app para acesso rápido</p>
                 </div>
             </div>
             <button class="install-btn" onclick="installPWA()">Instalar Aplicativo</button>
@@ -315,7 +314,7 @@
         <!-- Logo e Título -->
         <div class="logo-container">
             <div class="logo-icon">
-                <img src="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png" alt="Gersepa Segurança" style="width: 180px; height: 180px; object-fit: contain; filter: drop-shadow(0 10px 30px rgba(30, 58, 138, 0.4)); animation: floatBadge 4s ease-in-out infinite;">
+                <img src="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png" alt="Gersepa Segurança" style="width: 160px; height: 160px; object-fit: contain; filter: drop-shadow(0 10px 30px rgba(30, 58, 138, 0.4)); animation: floatBadge 4s ease-in-out infinite;">
             </div>
             <h1>Gersepa <span>Solutions</span></h1>
             <p class="subtitle">Conectando você aos melhores profissionais de limpeza e segurança</p>
@@ -345,40 +344,68 @@
     </div>
 
     <script>
-        // Registrar Service Worker
+        // Registrar Service Worker para PWA
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error:', err));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Falha ao registrar SW:', error);
+                    });
+            });
+        } else {
+            console.log('❌ Service Worker não suportado');
         }
 
+        // Lógica de instalação do PWA
         let deferredPrompt;
         const installPrompt = document.getElementById('installPrompt');
 
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ beforeinstallprompt capturado');
             e.preventDefault();
             deferredPrompt = e;
             installPrompt.classList.add('show');
         });
 
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ App instalado com sucesso!');
+            installPrompt.classList.remove('show');
+            deferredPrompt = null;
+        });
+
         function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(() => {
-                    installPrompt.classList.remove('show');
-                    deferredPrompt = null;
-                });
+            if (!deferredPrompt) {
+                console.log('❌ Instalação não disponível');
+                alert('A instalação só está disponível em HTTPS e após interagir com a página.');
+                return;
             }
+            
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('✅ Usuário aceitou instalar');
+                } else {
+                    console.log('❌ Usuário recusou instalação');
+                }
+                deferredPrompt = null;
+            });
         }
 
-        // Efeito ripple
+        // Efeito ripple nos botões
         document.querySelectorAll('.btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 const ripple = document.createElement('span');
                 ripple.classList.add('ripple');
                 const rect = this.getBoundingClientRect();
                 const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
                 ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
-                ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
                 this.appendChild(ripple);
                 setTimeout(() => ripple.remove(), 600);
             });
