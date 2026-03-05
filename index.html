@@ -16,8 +16,8 @@
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png">
 
-    <!-- Manifest PWA -->
-    <link rel="manifest" href="manifest.json">
+    <!-- Manifest será injetado dinamicamente -->
+    <link rel="manifest" id="dynamic-manifest">
 
     <!-- Fonte Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -454,7 +454,8 @@
                     <p>Instale nosso app para acesso rápido</p>
                 </div>
             </div>
-            <button class="install-btn" onclick="installPWA()">Instalar Aplicativo</button>
+            <button class="install-btn" id="installBtn">Instalar Aplicativo</button>
+            <button onclick="dismissInstall()" style="margin-top:8px;background:none;border:none;color:#666;font-size:0.85rem;cursor:pointer;width:100%;">Agora não</button>
         </div>
 
         <!-- Header -->
@@ -527,61 +528,197 @@
     </div>
 
     <script>
+        // ============================================================
+        // PWA DINÂMICO - MANIFEST E SERVICE WORKER EMBUTIDOS
+        // ============================================================
+
+        // URL da logo (usada como ícone)
+        const LOGO_URL = 'https://raw.githubusercontent.com/douglasjelinsky-code/logogersepa/refs/heads/main/LOGO_TOP-SEM%20FUNDO.png';
+
+        // 1. CRIAR MANIFEST DINÂMICO
+        function createDynamicManifest() {
+            const manifest = {
+                name: "Gersepa Solutions",
+                short_name: "Gersepa",
+                description: "Conectando você aos melhores profissionais de limpeza e segurança",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#1e3a8a",
+                theme_color: "#1e3a8a",
+                orientation: "portrait",
+                scope: ".",
+                lang: "pt-BR",
+                icons: [
+                    {
+                        src: LOGO_URL,
+                        sizes: "512x512",
+                        type: "image/png",
+                        purpose: "any maskable"
+                    },
+                    {
+                        src: LOGO_URL,
+                        sizes: "192x192",
+                        type: "image/png",
+                        purpose: "any maskable"
+                    }
+                ]
+            };
+
+            const manifestString = JSON.stringify(manifest);
+            const manifestBlob = new Blob([manifestString], { type: 'application/json' });
+            const manifestURL = URL.createObjectURL(manifestBlob);
+
+            document.getElementById('dynamic-manifest').setAttribute('href', manifestURL);
+            console.log('✅ Manifest dinâmico criado');
+        }
+
+        // 2. CRIAR SERVICE WORKER DINÂMICO (INLINE)
+        function createDynamicServiceWorker() {
+            const swCode = `
+                const CACHE_NAME = 'gersepa-v1';
+                const LOGO_URL = '${LOGO_URL}';
+
+                self.addEventListener('install', (event) => {
+                    console.log('[SW] Instalando...');
+                    event.waitUntil(
+                        caches.open(CACHE_NAME).then((cache) => {
+                            return cache.addAll([
+                                './',
+                                LOGO_URL
+                            ]).catch(err => console.log('[SW] Erro ao cachear:', err));
+                        })
+                    );
+                    self.skipWaiting();
+                });
+
+                self.addEventListener('activate', (event) => {
+                    console.log('[SW] Ativando...');
+                    event.waitUntil(
+                        caches.keys().then((cacheNames) => {
+                            return Promise.all(
+                                cacheNames.map((cacheName) => {
+                                    if (cacheName !== CACHE_NAME) {
+                                        return caches.delete(cacheName);
+                                    }
+                                })
+                            );
+                        })
+                    );
+                    self.clients.claim();
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    event.respondWith(
+                        caches.match(event.request).then((response) => {
+                            if (response) {
+                                return response;
+                            }
+                            return fetch(event.request).catch(() => {
+                                if (event.request.mode === 'navigate') {
+                                    return caches.match('./');
+                                }
+                            });
+                        })
+                    );
+                });
+            `;
+
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            return URL.createObjectURL(swBlob);
+        }
+
+        // 3. REGISTRAR SERVICE WORKER
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const swURL = createDynamicServiceWorker();
+                    const registration = await navigator.serviceWorker.register(swURL, {
+                        scope: './'
+                    });
+                    console.log('✅ Service Worker registrado:', registration.scope);
+                } catch (error) {
+                    console.log('❌ Falha ao registrar SW:', error);
+                }
+            }
+        }
+
+        // ============================================================
+        // FUNCIONALIDADES DO APP
+        // ============================================================
+
         // Ano dinâmico
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
         // Inicializar Lucide icons
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+
+            // Inicializar PWA
+            createDynamicManifest();
+            registerServiceWorker();
         });
 
-        // Registrar Service Worker para PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registrado:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.log('❌ Falha ao registrar SW:', error);
-                    });
-            });
-        }
+        // ============================================================
+        // LÓGICA DE INSTALAÇÃO DO PWA
+        // ============================================================
 
-        // Lógica de instalação do PWA
         let deferredPrompt;
         const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
 
+        // Verificar se já está instalado
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+
+        if (isStandalone) {
+            console.log('📱 App já instalado');
+            installPrompt.style.display = 'none';
+        }
+
+        // Capturar evento de instalação
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('✅ beforeinstallprompt capturado');
             e.preventDefault();
             deferredPrompt = e;
-            installPrompt.classList.add('show');
+
+            if (!isStandalone && !sessionStorage.getItem('installDismissed')) {
+                setTimeout(() => {
+                    installPrompt.classList.add('show');
+                }, 2000);
+            }
         });
 
+        // App instalado
         window.addEventListener('appinstalled', () => {
             console.log('✅ App instalado com sucesso!');
             installPrompt.classList.remove('show');
             deferredPrompt = null;
         });
 
-        function installPWA() {
+        // Dispensar prompt
+        function dismissInstall() {
+            installPrompt.classList.remove('show');
+            sessionStorage.setItem('installDismissed', 'true');
+        }
+
+        // Botão de instalação
+        installBtn.addEventListener('click', async () => {
             if (!deferredPrompt) {
-                console.log('❌ Instalação não disponível');
-                alert('A instalação só está disponível em HTTPS e após interagir com a página.');
+                alert('A instalação está disponível apenas em navegadores compatíveis (Chrome, Edge, Opera) via HTTPS.');
                 return;
             }
 
             deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('✅ Usuário aceitou instalar');
-                } else {
-                    console.log('❌ Usuário recusou instalação');
-                }
-                deferredPrompt = null;
-            });
-        }
+            const { outcome } = await deferredPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                console.log('✅ Usuário aceitou instalar');
+            } else {
+                console.log('❌ Usuário recusou instalação');
+                dismissInstall();
+            }
+            deferredPrompt = null;
+        });
     </script>
 </body>
 </html>
